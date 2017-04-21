@@ -147,6 +147,7 @@ class project_task_repetition_wizard(models.TransientModel):
                   'date_deadline'   : deadline, 
                   'ptr_parent_id'   : task_id.id,
                   'date_start'      : deadline,
+                  'stage_id'        : int(self.task_id.stage_id),
                   }
             try:
                 new_id = task_id.copy(default=vals)

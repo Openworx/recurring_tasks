@@ -12,7 +12,7 @@ With this module you are able to repeat project tasks pretty much in the same wa
     'price': 39.00,
     'currency': 'EUR',
     'category': 'Project',
-    'version': '1.0',
+    'version': '1.1',
     'depends': ["project"],
     'data': [
         'project_task_repetition_view.xml',
