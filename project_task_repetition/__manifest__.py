@@ -11,8 +11,8 @@ With this module you are able to repeat project tasks pretty much in the same wa
     'license': 'AGPL-3',
     'price': 39.00,
     'currency': 'EUR',
-    'category': 'Project',
-    'version': '1.0',
+    'category': 'Projects',
+    'version': '1.1',
     'depends': ["project"],
     'data': [
         'views/project_task_repetition_views.xml',
