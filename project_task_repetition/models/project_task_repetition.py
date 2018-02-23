@@ -25,41 +25,42 @@
 #
 ##############################################################################
 
-from odoo import models, fields, api, _
-from odoo.exceptions import except_orm, Warning, RedirectWarning
-from odoo.exceptions import UserError, AccessError
+from calendar import monthrange
 import datetime
 from dateutil.relativedelta import relativedelta
-from calendar import monthrange
+import logging
 import sys
 
-import logging
+from odoo import api, fields, models
+
+
 _logger = logging.getLogger(__name__)
 
 
-class project_task(models.Model):
+class ProjectTask(models.Model):
     _inherit = 'project.task'
     
     @api.one
     def ptr_get_has_sisters(self):
-        res=False
+        res = False
         if self.ptr_parent_id:
             if self.search([('ptr_parent_id', '=', self.ptr_parent_id.id)], limit=1):
                 res = True
         self.ptr_has_sisters = res
     
-    ptr_parent_id = fields.Many2one('project.task', string='Parent task', 
-                                        help='Task from which this one originated', readonly=True)
-    ptr_child_ids = fields.One2many('project.task', 'ptr_parent_id', 'Child tasks', 
-                                        help='Tasks originated from this one') 
-    ptr_has_sisters = fields.Boolean('Has sisters?', compute=ptr_get_has_sisters)
+    ptr_parent_id = fields.Many2one(
+        'project.task', string='Parent task', readonly=True,
+        help='Task from which this one originated')
+    ptr_child_ids = fields.One2many(
+        'project.task', 'ptr_parent_id', 'Child tasks',
+        help='Tasks originated from this one')
+    ptr_has_sisters = fields.Boolean(
+        'Has sisters?', compute=ptr_get_has_sisters)
 
     @api.multi
     def ptr_call_repetition_wizard(self):
-        
-        if isinstance(self.id,(tuple,list)):
-            ids=self.id
-        
+        if isinstance(self.id, (tuple, list)):
+            ids = self.id
         return {
                 'view_type' : 'form',
                 'view_mode' : 'form',
@@ -70,20 +71,16 @@ class project_task(models.Model):
                 'context'   : {'default_task_id':self.id},
             }    
 
-        
     @api.one
     def ptr_delete_child_tasks(self):
         if self.ptr_child_ids:
-            
             date_now = (datetime.datetime.now()).replace(hour=0, minute=0, second=0, microsecond=0)
-            
             for t in self.ptr_child_ids:
                 if datetime.datetime.strptime(t.date_deadline, "%Y-%m-%d") > date_now:
                     try:
                         t.unlink()
                     except:
                         _logger.error(str(sys.exc_info()[0]))
-
         return True
 
     @api.one
@@ -94,7 +91,6 @@ class project_task(models.Model):
                                     ('ptr_parent_id','=',self.ptr_parent_id.id),
                                     ('id','!=',self.id)
                                     ])
-            
             date_now = (datetime.datetime.now()).replace(hour=0, minute=0, second=0, microsecond=0)
             
             for t in sister_ids:
@@ -103,17 +99,16 @@ class project_task(models.Model):
                         t.unlink()
                     except:
                         _logger.error(str(sys.exc_info()[0]))
-
         return True
 
-class project_task_repetition_wizard(models.TransientModel):
-    _name = 'project.task.repetition.wizard'
 
+class ProjectTaskRepetitionWizard(models.TransientModel):
+    _name = 'project.task.repetition.wizard'
 
     DAYS_IN_MONTH = []
     for x in range(0, 31):
-        aux_day=x+1
-        DAYS_IN_MONTH.append((aux_day,str(aux_day)))
+        aux_day = x+1
+        DAYS_IN_MONTH.append((aux_day, str(aux_day)))
   
   
     task_id         = fields.Many2one('project.task', string='Original task', readonly=True)
@@ -134,11 +129,9 @@ class project_task_repetition_wizard(models.TransientModel):
     byday           = fields.Selection([('1', 'First'), ('2', 'Second'), ('3', 'Third'), ('4', 'Fourth'), ('5', 'Fifth'), ('-1', 'Last')], 'By day')
     change_date     = fields.Selection([('next_day', 'Next available day'), ('previous_day', 'Previous available day') ], 'Change date (if it is invalid)', default='previous_day')
     final_date      = fields.Date('Repeat Until')
-    
 
     @api.multi
     def create_task(self, task_id, deadline):
-        
         new_id=False
         if task_id and deadline:
             #we create a copy of the task but with the new deadline
@@ -159,60 +152,46 @@ class project_task_repetition_wizard(models.TransientModel):
     @api.multi
     def calculate_date(self, date=False, unit=False, amount=0):
         res_date = False
-
         if date and unit:
             res_date = date
-            
-            if unit=='daily':
+            if unit == 'daily':
                 res_date += relativedelta(days=amount)
-            elif  unit=='weekly':
+            elif unit == 'weekly':
                 res_date += relativedelta(weeks=amount)
-            elif  unit=='monthly':
+            elif unit == 'monthly':
                 res_date += relativedelta(months=amount)
-            elif  unit=='yearly':
+            elif unit == 'yearly':
                 res_date += relativedelta(years=amount)
-        
         return res_date
 
     #If final_date is required but no value was received, let's make some calculations
     @api.multi
     def get_default_final_date(self, unit, interval, count):
-
         res_date = datetime.date.today()
-        
         units_to_add = interval * count
-
-        if unit=='daily':
+        if unit == 'daily':
             res_date += relativedelta(days=units_to_add)
-        elif  unit=='weekly':
+        elif unit == 'weekly':
             res_date += relativedelta(weeks=units_to_add)
-        elif  unit=='monthly':
+        elif unit == 'monthly':
             res_date += relativedelta(months=units_to_add)
-        elif  unit=='yearly':
+        elif unit == 'yearly':
             res_date += relativedelta(years=units_to_add)
-        
         #so that we don't get stuck in a comparison
         res_date += relativedelta(days=1)
         res_date = datetime.datetime.strptime(str(res_date), "%Y-%m-%d")
-        
         return res_date
-
 
     @api.one
     def create_repetition(self):
-        
         #date of the original task deadline
         deadline = self.task_id.date_deadline 
         if deadline:
             deadline = datetime.datetime.strptime(deadline, "%Y-%m-%d")
         else:
             deadline = datetime.datetime.now()
-
-        
         deadline    = deadline.replace(hour=0, minute=0, second=0, microsecond=0)
         final_date  = self.final_date and datetime.datetime.strptime(self.final_date, "%Y-%m-%d")
-
-
         days = ['mo','tu','we','th','fr','sa','su']
         if self.rrule_type == 'weekly':
             days_chosen = False
@@ -222,19 +201,14 @@ class project_task_repetition_wizard(models.TransientModel):
                     break
         else:
             days_chosen = False
-
-        
         #We take the initial date and for COUNT times we add INTERVAL RRULE_TYPE
         for x in range(0, self.count):
-
             date_ok = True
-
             if (
                 self.rrule_type in ['daily', 'yearly'] 
                 or (self.rrule_type == 'weekly' and not days_chosen)
                 or (self.rrule_type == 'monthly' and not self.month_by)
                 ):
-                
                 if self.end_type == 'count':
                     deadline = self.calculate_date(deadline, self.rrule_type, self.interval)
                     self.create_task(self.task_id, deadline)
@@ -245,10 +219,7 @@ class project_task_repetition_wizard(models.TransientModel):
                             self.create_task(self.task_id, deadline)
                         else:
                             date_ok = False
-
-
             elif (self.rrule_type == 'monthly' and self.month_by):
-
                 #Every INTERVAL months, on day DAY, we create a task
                 if self.month_by == 'date':
                     """
@@ -287,14 +258,11 @@ class project_task_repetition_wizard(models.TransientModel):
                             self.create_task(self.task_id, aux_date)
                         else:
                             date_ok = False
-                            
                 else:
                     #Specific weekdays
                     date_ok=True
                     if not final_date:
                         final_date = self.get_default_final_date(self.rrule_type, self.interval, self.count)
-                        
-                        
                     while date_ok:
                         deadline = self.calculate_date(deadline, self.rrule_type, self.interval)
                                
@@ -317,9 +285,7 @@ class project_task_repetition_wizard(models.TransientModel):
                             self.create_task(self.task_id, aux_deadline)
                         else:
                             date_ok = False
-
             elif self.rrule_type == 'weekly' and days_chosen:
-                
                 #We add INTERVAL weeks to the last date and create a task on each chosen weekday
                 date_ok=True
                 while date_ok:

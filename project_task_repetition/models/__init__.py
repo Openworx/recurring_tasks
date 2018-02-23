@@ -5,7 +5,7 @@
 #    Copyright (C) 2015 Rui Pedrosa Franco All Rights Reserved
 #    http://pt.linkedin.com/in/ruipedrosafranco
 #    
-#    Migrated by Openworx for Odoo 11.0
+#    Migrated by Openworx for Odoo 10.0
 #    http://www.openworx.nl
 #
 #    $Id$
@@ -25,4 +25,4 @@
 #
 ##############################################################################
 
-from . import models
+from . import project_task_repetition
