@@ -9,7 +9,7 @@ With this module you are able to repeat project tasks pretty much in the same wa
     'author': 'Openworx',
     'website': 'http://www.openworx.nl',
     'license': 'AGPL-3',
-    'price': 39.00,
+    'price': 29.00,
     'currency': 'EUR',
     'category': 'Projects',
     'version': '1.1',
